@@ -1,0 +1,61 @@
+# ===== 敏感信息 =====
+.env
+.env.local
+.env.*.local
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ===== 虚拟环境 =====
+.venv/
+venv/
+ENV/
+env/
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ===== 数据库与日志 =====
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+logs/
+*.log
+
+# ===== Playwright 浏览器缓存 =====
+ms-playwright/
+
+# ===== 测试与缓存 =====
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ===== 临时文件 =====
+*.tmp
+*.bak
