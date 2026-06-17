@@ -1,7 +1,10 @@
-# 🤖 AI Collector Project — 智能内容采集系统 v1.0
+# 🤖 AI Collector Project — 智能内容采集系统 v1.1
 
 > 一个集成 **Playwright 反爬采集 + LLM 结构化清洗** 的全自动化 B 站内容监控与分析系统。
 > 这不是传统爬虫，而是一个具备**自主决策、内容理解、容错恢复**能力的 AI Agent。
+
+> 🆕 **v1.1 stable** (2026-06-17)：B 站反爬升级 / LLM 健壮性增强 / 失败自动重试 / 定时运行支持。
+> [👉 查看完整 Changelog](#-changelog)
 
 ---
 
@@ -112,15 +115,43 @@ DB_PATH=data/collector.db
 ### 5. 运行系统
 
 ```bash
+# 单次运行（默认每阶段处理 3 条）
 python main.py
+
+# 批量补跑（一次跑 N 条 PENDING）
+python run_batch.py 10
+
+# 通过 wrapper 脚本运行（适合 cron）
+./run.sh
+./run.sh --batch 10
 ```
 
 首次运行会：
 1. 自动创建 `data/collector.db` 数据库与 4 张表
-2. 检测 `task_queue` 中的 PENDING 任务
-3. 用 Playwright 抓取网页（默认 `headless=True` 后台运行）
-4. 调用 LLM 提取结构化数据
-5. 写入日志到 `logs/pipeline.log`
+2. **v1.1 新增**：自动把可重试的 FAILED 任务回滚到合适状态（COLLECTED 或 PENDING）
+3. 检测 `task_queue` 中的 PENDING 任务
+4. 用 Playwright 抓取网页（默认 `headless=True` 后台运行）
+5. 调用 LLM 提取结构化数据
+6. 写入日志到 `logs/pipeline.log`，最后输出 DB state 摘要
+
+### 6. 配置定时运行（可选）
+
+**方式 A — 系统 crontab：**
+
+```bash
+crontab -e
+
+# 每天上午 9:30 自动跑
+30 9 * * * /path/to/ai_collector_project/run.sh \
+           >> /path/to/ai_collector_project/logs/cron.log 2>&1
+```
+
+**方式 B — Hermes Agent 调度（推荐，自带摘要推送）：**
+
+```bash
+# 见 ai_collector_cron.py，输出 8 行精简摘要发给你
+# 摘要包含：新增 / 处理 / 失败统计 + 最新入库标题
+```
 
 ---
 
@@ -240,24 +271,73 @@ ai_collector_project/
 
 ---
 
-## 🔧 优化空间 (Roadmap v2.0)
+## 📜 Changelog
 
-### 🔴 高优先级
+### v1.1 (2026-06-17) — Stability Release
 
-| 问题 | 现象 | 解决方向 |
-| :--- | :--- | :--- |
-| **B 站 API 412 风控** | Monitor 阶段无法获取新视频列表 | 改用 Playwright 抓 UP 主空间页 / 注入 Cookie |
-| **LLM Token 截断** | 长文本 JSON 输出被截断导致解析失败 | 把 `max_tokens` 提到 4000+ / 使用流式响应 / Prompt 限制总结字数 |
-| **DOM 选择器过期** | `.video-desc` 在新版 B 站找不到 | 升级为多选择器 fallback 机制 |
+修复了 v1.0 在真实环境下暴露的 4 个核心问题，并加入定时运行支持。
+
+🛡️ **B 站反爬升级**
+- 参数 `uid=` → `mid=`（B 站官方推荐，老参数已逐步弃用）
+- 完整浏览器 headers（UA + Referer + Origin + Accept-Language）
+- 支持 `.env` 里配置 `BILI_COOKIE`，requests / Playwright 双路径都注入登录态
+- 识别 B 站业务错误码（-799 WBI 签名 / -412 风控 / -111 鉴权）
+- HTTP 412/403/429 或业务错误 → 自动 fallback 到 Playwright（打开 space 页扒 BV 号）
+
+🔍 **Collector 选择器全面更新**（基于 2026-06 实地探测）
+- `.video-desc` / `.desc-content` ❌ 已下线
+- `.video-desc-container` / `#v_desc` ✅ 新主选择器
+- title / up_name / desc / tags 4 个核心字段独立提取，多套备选选择器降级
+- 结构化字段拼到 markdown 顶部，给 LLM 明确 anchor
+
+🧠 **LLM 处理健壮性**
+- `max_tokens` 2000 → 4000，避免长内容 JSON 截断
+- 输入上下文上限 6000 → 8000，更多 anchor 给 LLM
+- 新增 `_safe_json_parse()` 二段解析（直接 + 截取大括号）
+- 失败时把原始 LLM 输出落盘到 `logs/llm_failures/`，便于复盘
+- 检测 `finish_reason="length"` 主动告警
+- LLM 单次请求 90s 超时，避免偶发长尾卡死整个流水线
+
+🔁 **失败自动重试**
+- `task_queue` 表新增 `error_message` + `last_attempt_at` 字段（幂等迁移，老库自动升级）
+- `mark_failed(url, reason)` 替代 `update_task_status('FAILED')`，记录失败原因 + 自增 retry_count
+- `requeue_failed(max_retry=3)` 智能恢复：
+    - 已有 `raw_contents`（LLM 阶段失败）→ 回到 COLLECTED，跳过重抓
+    - 没有 `raw_contents`（采集阶段失败）→ 回到 PENDING，从头重试
+    - `retry_count >= max_retry` 保留 FAILED，不再重试
+- `main.py` 启动时自动调用 `requeue_failed()`，失败任务下次自动复活
+
+⏰ **定时运行支持**
+- `run.sh`：POSIX shell wrapper，可直接挂到 crontab/launchd/systemd
+- `run.sh --batch N`：一次跑 N 条 PENDING（手动追赶用）
+- `ai_collector_cron.py`：8 行精简摘要的 cron entrypoint
+- 计算运行前后 DB diff，输出新增 / 处理 / 失败统计 + 最新入库标题
+
+📊 **运行报告增强**
+- `db.get_run_summary()` 返回状态 histogram + final_results 计数
+- Pipeline 收尾日志新增 requeue 统计 + DB state 全景
+
+🐛 **Bug 修复**
+- main.py 在 async 上下文中调用同步 `sync_targets()` 导致 `RuntimeError: event loop is already running` —— 已加 `sync_targets_async()` 异步入口
+- `print()` 全部替换为 `logger`，方便日志收集
+
+🧪 **实战验证**
+- 端到端跑通：从 0 个数据 → 18 条 AI 行业新闻入库（涵盖 GLM-5.2 / Cursor 收购 / DiffusionGemma 等）
+- 验证了失败自动重试：昨天 v1.0 留下的 1 条 FAILED 在今天自动复活
+- 验证了 LLM timeout：偶发 90s+ 长尾不再卡死流水线
+
+---
+
+## 🔧 优化空间 (Roadmap v1.2+)
 
 ### 🟡 中优先级
 
+- [ ] **元数据补齐**：collector 当前只抓 4 个字段（title/up/desc/tags），扩展到 7 个：publish_time、play_count、danmaku_count
+- [ ] **OpenAI SDK retry 控制**：`max_retries=2` 默认值导致单条 LLM 失败要 5 分钟，考虑改 `max_retries=0` 让流水线快速跳过
 - [ ] **支持更多平台**：知乎、微博、小红书、Twitter/X
-- [ ] **持久化登录态**：Playwright 持久化 context 保留 Cookie
-- [ ] **失败重试**：对 FAILED 任务自动重试 3 次（带指数退避）
-- [ ] **去重机制升级**：基于 URL 规范化（去除 `?spm_id_from=` 参数等）
+- [ ] **持久化登录态**：Playwright `storage_state` 保留 Cookie，免得每天手动复制
+- [ ] **去重机制升级**：基于 URL 规范化（去除 `?spm_id_from=` 等参数）
 - [ ] **并发采集**：用 `asyncio.gather` 并发抓取多个 URL
-- [ ] **Cron 自动化**：crontab 定时调度（每 4 小时一次）
 
 ### 🟢 长期规划
 
@@ -266,6 +346,14 @@ ai_collector_project/
 - [ ] **Embedding + 向量库**：将结构化数据存入 ChromaDB / Weaviate，支持语义搜索
 - [ ] **Agent 化**：引入 LangGraph，让系统自己决定下一步采集策略
 - [ ] **告警通知**：采集到关键内容时推送到微信/Telegram
+
+### ✅ 已在 v1.1 解决（v1.0 时代的高优先级问题）
+
+- [x] ~~B 站 API 412 风控~~ → cookie 注入 + Playwright fallback
+- [x] ~~LLM Token 截断~~ → max_tokens 4000 + 二段 JSON 解析 + 90s timeout
+- [x] ~~DOM 选择器过期~~ → 多套备选选择器 + 结构化字段独立抓取
+- [x] ~~失败重试~~ → mark_failed + requeue_failed + 自动复活
+- [x] ~~Cron 自动化~~ → run.sh + ai_collector_cron.py
 
 ---
 
@@ -292,7 +380,9 @@ python main.py
 | id | INTEGER | 主键自增 |
 | url | TEXT UNIQUE | 视频 URL |
 | status | TEXT | PENDING/PROCESSING/COLLECTED/COMPLETED/FAILED |
-| retry_count | INTEGER | 重试次数 |
+| retry_count | INTEGER | 重试次数 (v1.1 起由 `mark_failed` 自动维护) |
+| error_message | TEXT | **v1.1 新增** — 最近一次失败原因（截断 500 字） |
+| last_attempt_at | DATETIME | **v1.1 新增** — 最近一次执行时间 |
 | created_at | DATETIME | 入队时间 |
 
 ### `raw_contents` (原始抓取)
