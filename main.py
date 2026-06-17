@@ -41,10 +41,10 @@ class AIPipeline:
         logger.info("=" * 60)
     
     # =========== 阶段 1: 监控 ===========
-    def stage1_monitor(self):
+    async def stage1_monitor(self):
         """发现新 URL"""
         logger.info("[Stage 1] Monitoring targets for new content...")
-        added = self.monitor.sync_targets(self.TARGET_UIDS)
+        added = await self.monitor.sync_targets_async(self.TARGET_UIDS)
         logger.info(f"[Stage 1] Done. {added} new URLs added to queue.")
         return added
     
@@ -80,10 +80,10 @@ class AIPipeline:
                     logger.info(f"[Stage 2] OK ({len(content)} chars)")
                     success_count += 1
                 else:
-                    self.db.update_task_status(url, "FAILED")
+                    self.db.mark_failed(url, "empty or too-short content from collector")
                     logger.warning(f"[Stage 2] Empty content for {url}")
             except Exception as e:
-                self.db.update_task_status(url, "FAILED")
+                self.db.mark_failed(url, f"collector exception: {e}")
                 logger.error(f"[Stage 2] Failed: {e}")
             
             # 反爬限流：随机延迟 3-8 秒
@@ -128,10 +128,10 @@ class AIPipeline:
                     logger.info(f"[Stage 3] OK")
                     success_count += 1
                 else:
-                    self.db.update_task_status(url, "FAILED")
+                    self.db.mark_failed(url, "LLM returned empty/invalid JSON")
                     logger.warning(f"[Stage 3] LLM returned empty result")
             except Exception as e:
-                self.db.update_task_status(url, "FAILED")
+                self.db.mark_failed(url, f"processor exception: {e}")
                 logger.error(f"[Stage 3] Failed: {e}")
         
         logger.info(f"[Stage 3] Done. {success_count}/{len(tasks)} processed.")
@@ -142,24 +142,34 @@ class AIPipeline:
         """执行完整的流水线"""
         start_time = datetime.now()
         logger.info(f"\n>>> Pipeline started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        
+
+        # v1.1: 启动时把可重试的 FAILED 任务回滚到合适状态
+        requeue = self.db.requeue_failed()
+
         # 阶段 1: 监控
-        new_urls = self.stage1_monitor()
-        
+        new_urls = await self.stage1_monitor()
+
         # 阶段 2: 采集
         collected = await self.stage2_collect(max_count=3)
-        
+
         # 阶段 3: LLM 清洗
         processed = self.stage3_process(max_count=3)
-        
+
         # 总结
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
+        summary = self.db.get_run_summary()
+
         logger.info("\n" + "=" * 60)
         logger.info(f">>> Pipeline completed in {duration:.1f}s")
+        logger.info(f"   Requeued:   {requeue['to_collected']} -> COLLECTED, "
+                    f"{requeue['to_pending']} -> PENDING, "
+                    f"{requeue['kept_failed']} kept FAILED")
         logger.info(f"   New URLs:   {new_urls}")
         logger.info(f"   Collected:  {collected}")
         logger.info(f"   Processed:  {processed}")
+        logger.info(f"   DB state:   {summary['by_status']} | "
+                    f"final_results={summary['total_final_results']}")
         logger.info("=" * 60 + "\n")
 
 
