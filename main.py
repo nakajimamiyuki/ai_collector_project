@@ -41,10 +41,10 @@ class AIPipeline:
         logger.info("=" * 60)
     
     # =========== 阶段 1: 监控 ===========
-    def stage1_monitor(self):
+    async def stage1_monitor(self):
         """发现新 URL"""
         logger.info("[Stage 1] Monitoring targets for new content...")
-        added = self.monitor.sync_targets(self.TARGET_UIDS)
+        added = await self.monitor.sync_targets_async(self.TARGET_UIDS)
         logger.info(f"[Stage 1] Done. {added} new URLs added to queue.")
         return added
     
@@ -144,7 +144,7 @@ class AIPipeline:
         logger.info(f"\n>>> Pipeline started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         
         # 阶段 1: 监控
-        new_urls = self.stage1_monitor()
+        new_urls = await self.stage1_monitor()
         
         # 阶段 2: 采集
         collected = await self.stage2_collect(max_count=3)

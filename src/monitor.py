@@ -117,6 +117,31 @@ class BiliMonitor:
     # ------------------------------------------------------------------
     # Stage B: Playwright fallback
     # ------------------------------------------------------------------
+    @staticmethod
+    def _parse_cookie_string(cookie_str):
+        """
+        把 'k1=v1; k2=v2' 格式的 cookie 字符串解析为
+        Playwright 的 add_cookies 需要的 dict 列表。
+        domain 设成 .bilibili.com，覆盖所有子域名。
+        """
+        cookies = []
+        for chunk in cookie_str.split(";"):
+            chunk = chunk.strip()
+            if not chunk or "=" not in chunk:
+                continue
+            name, value = chunk.split("=", 1)
+            name = name.strip()
+            value = value.strip()
+            if not name:
+                continue
+            cookies.append({
+                "name": name,
+                "value": value,
+                "domain": ".bilibili.com",
+                "path": "/",
+            })
+        return cookies
+
     async def _fetch_via_playwright_async(self, uid) -> List[str]:
         """打开 UP 主投稿页，从 DOM 里抠 BV 号。"""
         from playwright.async_api import async_playwright
@@ -131,22 +156,37 @@ class BiliMonitor:
                 user_agent=self.DEFAULT_HEADERS["User-Agent"],
                 viewport={"width": 1280, "height": 800},
             )
+
+            # 关键：把 .env 里的 BILI_COOKIE 注入到 Playwright context，
+            # 这样 fallback 路径也能享受登录态，绕过风控。
+            cookie_str = os.getenv("BILI_COOKIE")
+            if cookie_str:
+                try:
+                    pw_cookies = self._parse_cookie_string(cookie_str)
+                    if pw_cookies:
+                        await ctx.add_cookies(pw_cookies)
+                        logger.info(
+                            f"[Monitor] [playwright] injected {len(pw_cookies)} "
+                            f"cookies from BILI_COOKIE"
+                        )
+                except Exception as e:
+                    logger.warning(f"[Monitor] [playwright] cookie inject failed: {e}")
+
             page = await ctx.new_page()
             await Stealth().apply_stealth_async(page)
 
             try:
-                # 先访问主页 seed cookie
-                await page.goto(
-                    "https://www.bilibili.com/", wait_until="domcontentloaded", timeout=30000
-                )
-                await asyncio.sleep(1.5)
-
+                # 直接到 space 页（cookie 已经在 context 里了，不需要再 seed）
                 await page.goto(space_url, wait_until="domcontentloaded", timeout=30000)
-                await asyncio.sleep(3)  # 等 SPA 渲染
+                # 等 SPA 渲染列表，最多重试 3 次
+                bvids: set = set()
+                for delay in (2, 3, 4):
+                    await asyncio.sleep(delay)
+                    html = await page.content()
+                    bvids = set(re.findall(r"/video/(BV[0-9A-Za-z]{10})", html))
+                    if bvids:
+                        break
 
-                # 直接从整页 HTML 里抠 /video/BVxxxx 链接
-                html = await page.content()
-                bvids = set(re.findall(r"/video/(BV[0-9A-Za-z]{10})", html))
                 urls = [f"https://www.bilibili.com/video/{bv}" for bv in bvids]
 
                 logger.info(
@@ -161,23 +201,37 @@ class BiliMonitor:
         return urls
 
     def _fetch_via_playwright(self, uid) -> List[str]:
-        """同步包装：选择当前是否已有 event loop，避开 'event loop is running' 报错。"""
+        """
+        同步包装：仅在没有正在运行的 event loop 时使用。
+        如果已经在 async 上下文中调用，请直接 await fetch_bilibili_urls_async()。
+        """
         try:
             asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(self._fetch_via_playwright_async(uid))
-        # 已经在事件循环里（极少出现），直接调用底层
-        return asyncio.get_event_loop().run_until_complete(
-            self._fetch_via_playwright_async(uid)
+        # 已在事件循环中：抛清晰错误，引导调用方用 async API
+        raise RuntimeError(
+            "BiliMonitor.fetch_bilibili_urls() called from inside a running "
+            "event loop. Use `await monitor.fetch_bilibili_urls_async(uid)` "
+            "or `await monitor.sync_targets_async(uids)` instead."
         )
 
     # ------------------------------------------------------------------
     # 公共入口
     # ------------------------------------------------------------------
+    async def fetch_bilibili_urls_async(self, uid) -> List[str]:
+        """异步版本：在 async 上下文中使用这个。"""
+        logger.info(f"[Monitor] Scanning UID {uid} ...")
+        urls = self._fetch_via_requests(uid)
+        if urls is not None:
+            return urls
+        logger.info(f"[Monitor] requests path failed, trying Playwright fallback ...")
+        return await self._fetch_via_playwright_async(uid)
+
     def fetch_bilibili_urls(self, uid) -> List[str]:
         """
-        先 requests，失败再 Playwright。
-        统一返回 list[str]，永远不抛异常。
+        同步版本：在普通同步代码或独立脚本中使用。
+        先 requests，失败再 Playwright。统一返回 list[str]，永远不抛业务异常。
         """
         logger.info(f"[Monitor] Scanning UID {uid} ...")
 
@@ -188,7 +242,20 @@ class BiliMonitor:
         logger.info(f"[Monitor] requests path failed, trying Playwright fallback ...")
         return self._fetch_via_playwright(uid)
 
+    async def sync_targets_async(self, target_uids):
+        """异步版：main.py 在 async 上下文中应该用这个。"""
+        total_added = 0
+        for uid in target_uids:
+            urls = await self.fetch_bilibili_urls_async(uid)
+            if urls:
+                added = self.db.add_new_urls(urls)
+                logger.info(f"[Monitor] UID {uid}: added {added} new tasks to queue.")
+                total_added += added
+        logger.info(f"[Monitor] Sync completed. Total new tasks added: {total_added}")
+        return total_added
+
     def sync_targets(self, target_uids):
+        """同步版：脚本式调用。"""
         total_added = 0
         for uid in target_uids:
             urls = self.fetch_bilibili_urls(uid)
