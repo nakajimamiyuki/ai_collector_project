@@ -18,6 +18,7 @@ class LLMProcessor:
     MAX_TOKENS = 4000               # v1.1: 从 2000 提到 4000，避免长 JSON 截断
     INPUT_CHAR_LIMIT = 8000         # v1.1: 输入上下文从 6000 提到 8000
     TEMPERATURE = 0.2
+    LLM_TIMEOUT_SEC = 90            # v1.1: 单次 LLM 请求超时（防止偶发 latency 卡死流水线）
     FAILURE_LOG_DIR = Path("logs/llm_failures")  # 解析失败的原始输出落盘位置
 
     def __init__(self):
@@ -152,6 +153,7 @@ class LLMProcessor:
                 ],
                 temperature=self.TEMPERATURE,
                 max_tokens=self.MAX_TOKENS,
+                timeout=self.LLM_TIMEOUT_SEC,  # v1.1: 防止偶发长尾卡死整个流水线
             )
         except Exception as e:
             logger.error(f"[Processor] LLM API call failed: {e}")
