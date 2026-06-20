@@ -1,13 +1,16 @@
 """
-Bilibili collector (v1.1)
+Content collector (v2.0)
 
-v1.0 -> v1.1 改进：
+v1.1 -> v2.0 改进：
+- 按 URL 类型分派采集策略（插件式信息源的下游配套）：
+  · bilibili.com  -> Playwright + stealth（动态 SPA，需浏览器）
+  · arxiv.org     -> 轻量 requests + BeautifulSoup（静态页，无需浏览器）
+- collect_content(url) 仍是统一入口，main.py 无需感知类型差异
+- 类名保留 BiliCollector 以兼容旧调用（实为通用 Collector）
+
+v1.0 -> v1.1（B 站部分，原样保留）：
 - 选择器全面更新（基于 2026-06-17 的真实 B 站 DOM 探测）
-  · .video-desc / .desc-content  ❌ 已下线
-  · .video-desc-container / #v_desc  ✅ 当前正确
-- 标题、UP主、标签独立抓取，不再让 LLM 从 markdown 里"猜"
-- 抓到的结构化字段拼到 markdown 顶部，给 LLM 更明确的 anchor
-- print() -> logger
+- 标题、UP主、标签独立抓取，拼到 markdown 顶部给 LLM 明确 anchor
 - 任何单个字段失败都不影响整体（容错降级）
 """
 
@@ -15,6 +18,7 @@ import asyncio
 import logging
 import random
 
+import requests
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 from markdownify import markdownify as md
@@ -90,10 +94,90 @@ class BiliCollector:
 
     async def collect_content(self, url):
         """
+        统一采集入口：按 URL 类型分派到对应采集策略。
+        失败返回 None；成功返回带结构化头部的 Markdown 字符串。
+        """
+        if "arxiv.org" in url:
+            return self._collect_arxiv(url)
+        # 默认按 B 站处理（向后兼容）
+        return await self._collect_bilibili(url)
+
+    # ------------------------------------------------------------------
+    # arXiv：轻量 requests，无需浏览器
+    # ------------------------------------------------------------------
+    def _collect_arxiv(self, url):
+        """
+        采集 arXiv abstract 页（静态 HTML），转成带结构化头部的 Markdown。
+        arXiv 页面是服务端渲染的静态页，requests 即可，省去 Playwright 开销。
+        """
+        logger.info(f"[Collector] Collecting (arxiv) from: {url}")
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            )
+        }
+        try:
+            resp = requests.get(url, headers=headers, timeout=30)
+            if resp.status_code != 200:
+                logger.error(f"[Collector] arxiv HTTP {resp.status_code} for {url}")
+                return None
+
+            soup = BeautifulSoup(resp.content, "html.parser")
+
+            def _clean(node, prefix):
+                """取文本并去掉 arxiv 页面的 'Title:' / 'Abstract:' 等前缀。"""
+                if not node:
+                    return None
+                txt = node.get_text(strip=True)
+                if prefix and txt.startswith(prefix):
+                    txt = txt[len(prefix):].strip()
+                return txt or None
+
+            title = _clean(soup.select_one("h1.title"), "Title:")
+            authors = _clean(soup.select_one("div.authors"), "Authors:")
+            abstract = _clean(soup.select_one("blockquote.abstract"), "Abstract:")
+            # 学科分类标签
+            subjects = _clean(soup.select_one("td.subjects"), None)
+
+            header_lines = []
+            if title:
+                header_lines.append(f"# {title}")
+            if authors:
+                header_lines.append(f"作者：{authors}")
+            if subjects:
+                header_lines.append(f"分类：{subjects}")
+
+            body = abstract or ""
+            if header_lines:
+                markdown_text = "\n\n".join(header_lines) + "\n\n---\n\n" + body
+            else:
+                markdown_text = body
+
+            if len(markdown_text) < 20:
+                logger.warning(f"[Collector] arxiv content too short for {url}")
+                return None
+
+            logger.info(
+                f"[Collector] OK (arxiv) {url} | len={len(markdown_text)} "
+                f"title={'Y' if title else 'N'} abstract={'Y' if abstract else 'N'}"
+            )
+            return markdown_text
+
+        except Exception as e:
+            logger.error(f"[Collector] arxiv error on {url}: {e}")
+            return None
+
+    # ------------------------------------------------------------------
+    # Bilibili：Playwright + stealth（v1.1 逻辑原样保留）
+    # ------------------------------------------------------------------
+    async def _collect_bilibili(self, url):
+        """
         采集 B 站视频页主体内容并转 Markdown。
         失败返回 None；成功返回带结构化头部的 Markdown 字符串。
         """
-        logger.info(f"[Collector] Collecting from: {url}")
+        logger.info(f"[Collector] Collecting (bilibili) from: {url}")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=self.headless)

@@ -5,7 +5,9 @@ import os
 import sqlite3
 from datetime import datetime
 from src.db_manager import DBManager
-from src.monitor import BiliMonitor
+from src.monitor import Monitor
+from src.sources.bilibili import BilibiliSource
+from src.sources.arxiv import ArxivSource
 from src.collector import BiliCollector
 from src.processor import LLMProcessor
 
@@ -33,18 +35,24 @@ class AIPipeline:
     
     def __init__(self, headless=True):
         self.db = DBManager()
-        self.monitor = BiliMonitor()
+        # v2.0: 插件式信息源架构。新增源 = 注册一个 BaseSource 子类。
+        self.monitor = Monitor(sources=[
+            BilibiliSource(uids=self.TARGET_UIDS),
+            ArxivSource(categories=["cs.AI", "cs.CL", "cs.LG"], max_results=5),
+        ])
         self.collector = BiliCollector(headless=headless)
         self.processor = LLMProcessor()
         logger.info("=" * 60)
         logger.info("AI Pipeline Initialized.")
+        logger.info(f"  Registered sources: "
+                    f"{[s.source_type for s in self.monitor.sources]}")
         logger.info("=" * 60)
     
     # =========== 阶段 1: 监控 ===========
     async def stage1_monitor(self):
-        """发现新 URL"""
-        logger.info("[Stage 1] Monitoring targets for new content...")
-        added = await self.monitor.sync_targets_async(self.TARGET_UIDS)
+        """发现新 URL（遍历所有已注册信息源）"""
+        logger.info("[Stage 1] Monitoring all sources for new content...")
+        added = await self.monitor.run_all_async()
         logger.info(f"[Stage 1] Done. {added} new URLs added to queue.")
         return added
     
@@ -120,7 +128,7 @@ class AIPipeline:
             logger.info(f"[Stage 3] ({i}/{len(tasks)}) Cleaning: {url}")
             
             try:
-                json_result = self.processor.clean_data(markdown)
+                json_result = self.processor.clean_data(markdown, url=url)
                 
                 if json_result:
                     # save_final_result 内部会自动更新状态为 COMPLETED

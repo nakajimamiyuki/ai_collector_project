@@ -44,6 +44,11 @@ data/*.db
 data/*.db-journal
 data/*.db-shm
 data/*.db-wal
+# 根目录残留 db（早期路径遗留，不应入库）
+/ai_collector.db
+*.db-journal
+*.db-shm
+*.db-wal
 logs/
 *.log
 

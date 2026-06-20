@@ -41,8 +41,14 @@ class LLMProcessor:
         # 确保失败日志目录存在
         self.FAILURE_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    def _build_prompt(self, markdown_text):
-        """构建结构化提取的 Prompt"""
+    def _build_prompt(self, markdown_text, source_type="bilibili"):
+        """按信息源类型构建结构化提取 Prompt。"""
+        if source_type == "arxiv":
+            return self._build_arxiv_prompt(markdown_text)
+        return self._build_bilibili_prompt(markdown_text)
+
+    def _build_bilibili_prompt(self, markdown_text):
+        """B 站视频结构化提取 Prompt（v1.1 原样保留）。"""
         return f"""你是一个专业的数据分析师。请从以下 B 站视频页面的 Markdown 文本中精准提取关键信息，并以严格的 JSON 格式返回。
 
 要求字段：
@@ -60,6 +66,34 @@ class LLMProcessor:
 2. 如果某字段在原文中找不到，请填 null（数组字段填 []）。
 3. 字符串内的双引号必须用 \\" 转义，不要输出未转义的换行。
 4. summary 字段需要你基于标题、标签、UP主等线索进行合理推断，请控制长度，避免输出被截断。
+5. key_points 控制在 3-5 条，每条不超过 30 字。
+
+待分析文本：
+---
+{markdown_text[:self.INPUT_CHAR_LIMIT]}
+---
+
+请直接输出 JSON："""
+
+    def _build_arxiv_prompt(self, markdown_text):
+        """arXiv 论文结构化提取 Prompt（v2.0 新增）。"""
+        return f"""你是一个专业的 AI 论文分析师。请从以下 arXiv 论文页面的 Markdown 文本（含标题、作者、分类、摘要）中提取关键信息，并以严格的 JSON 格式返回。
+
+要求字段（注意：与视频不同，论文统一用以下字段）：
+- title: 论文标题
+- up_name: 论文第一作者或作者团队（用作者字段填充；若无则 null）
+- publish_time: 发布时间（arXiv 页通常无精确时间，填 null 即可）
+- play_count: 固定填 null（论文无此概念）
+- danmaku_count: 固定填 null（论文无此概念）
+- tags: 论文学科分类标签（如 "cs.AI"、"cs.CL"，字符串数组；从"分类"行提取）
+- summary: 用中文概括论文核心贡献 (50-150 字，基于摘要)
+- key_points: 论文的核心要点/方法/结论 (字符串数组，3-5 个，用中文)
+
+特别注意：
+1. 必须返回纯 JSON 对象，禁止包含 ```json 代码块标记或其他解释文字、前缀、后缀。
+2. summary 和 key_points 必须用中文输出，即使原文是英文。
+3. 字符串内的双引号必须用 \\" 转义，不要输出未转义的换行。
+4. 找不到的字段填 null（数组字段填 []）。
 5. key_points 控制在 3-5 条，每条不超过 30 字。
 
 待分析文本：
@@ -131,17 +165,27 @@ class LLMProcessor:
         except Exception as e:
             logger.error(f"[Processor] Failed to dump failure log: {e}")
 
-    def clean_data(self, markdown_text):
+    def clean_data(self, markdown_text, url=None):
         """
         调用 LLM 将 Markdown 转化为结构化 JSON 字符串。
         成功 → 返回 JSON 字符串
         失败 → 返回 None（不抛异常，调用方继续走状态机）
+
+        Args:
+            markdown_text: 待提取的 Markdown 文本。
+            url: 可选，内容来源 URL。用于推断 source_type 以选择对应 prompt。
+                 None 时默认按 B 站处理（向后兼容）。
         """
         if not markdown_text or len(markdown_text) < 20:
             logger.warning("[Processor] Markdown text too short, skipping LLM.")
             return None
 
-        prompt = self._build_prompt(markdown_text)
+        # 按 URL 推断信息源类型，选择对应 prompt
+        source_type = "bilibili"
+        if url and "arxiv.org" in url:
+            source_type = "arxiv"
+
+        prompt = self._build_prompt(markdown_text, source_type=source_type)
 
         try:
             logger.info(f"[Processor] Calling LLM ({self.model}) ...")
