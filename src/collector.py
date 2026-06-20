@@ -92,12 +92,19 @@ class BiliCollector:
                 continue
         return [], None
 
-    async def collect_content(self, url):
+    async def collect_content(self, url, source_type=None):
         """
-        统一采集入口：按 URL 类型分派到对应采集策略。
+        统一采集入口：按来源类型分派到对应采集策略。
         失败返回 None；成功返回带结构化头部的 Markdown 字符串。
+
+        Args:
+            url: 内容 URL。
+            source_type: 显式来源类型（bilibili / arxiv）。为 None 时从 URL 推断（兜底）。
         """
-        if "arxiv.org" in url:
+        if source_type is None:
+            source_type = "arxiv" if "arxiv.org" in url else "bilibili"
+
+        if source_type == "arxiv":
             return self._collect_arxiv(url)
         # 默认按 B 站处理（向后兼容）
         return await self._collect_bilibili(url)

@@ -61,26 +61,33 @@ class AIPipeline:
         """从队列取出 PENDING 任务，使用 Playwright 抓取"""
         logger.info(f"[Stage 2] Fetching up to {max_count} pending tasks...")
         
-        # 从数据库查 PENDING 任务
+        # 从数据库查 PENDING 任务（带来源类型）
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        cursor.execute("SELECT url FROM task_queue WHERE status='PENDING' LIMIT ?", (max_count,))
-        pending_urls = [row[0] for row in cursor.fetchall()]
+        cursor.execute(
+            "SELECT url, source_type FROM task_queue WHERE status='PENDING' LIMIT ?",
+            (max_count,),
+        )
+        pending = cursor.fetchall()  # [(url, source_type), ...]
         conn.close()
         
-        if not pending_urls:
+        if not pending:
             logger.info("[Stage 2] No pending tasks.")
             return 0
         
         success_count = 0
-        for i, url in enumerate(pending_urls, 1):
-            logger.info(f"[Stage 2] ({i}/{len(pending_urls)}) Collecting: {url}")
+        for i, (url, source_type) in enumerate(pending, 1):
+            logger.info(
+                f"[Stage 2] ({i}/{len(pending)}) Collecting [{source_type}]: {url}"
+            )
             
             # 标记为 PROCESSING
             self.db.update_task_status(url, "PROCESSING")
             
             try:
-                content = await self.collector.collect_content(url)
+                content = await self.collector.collect_content(
+                    url, source_type=source_type
+                )
                 
                 if content and len(content) > 50:
                     # 存原文 (save_raw_content 内部会自动更新状态为 COLLECTED)
@@ -95,12 +102,12 @@ class AIPipeline:
                 logger.error(f"[Stage 2] Failed: {e}")
             
             # 反爬限流：随机延迟 3-8 秒
-            if i < len(pending_urls):
+            if i < len(pending):
                 delay = random.uniform(3, 8)
                 logger.info(f"[Stage 2] Sleeping {delay:.1f}s before next...")
                 await asyncio.sleep(delay)
         
-        logger.info(f"[Stage 2] Done. {success_count}/{len(pending_urls)} collected.")
+        logger.info(f"[Stage 2] Done. {success_count}/{len(pending)} collected.")
         return success_count
     
     # =========== 阶段 3: LLM 清洗 ===========
@@ -111,7 +118,7 @@ class AIPipeline:
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT t.url, r.markdown_text 
+            SELECT t.url, t.source_type, r.markdown_text 
             FROM task_queue t 
             JOIN raw_contents r ON t.url = r.url 
             WHERE t.status='COLLECTED' LIMIT ?
@@ -124,15 +131,19 @@ class AIPipeline:
             return 0
         
         success_count = 0
-        for i, (url, markdown) in enumerate(tasks, 1):
-            logger.info(f"[Stage 3] ({i}/{len(tasks)}) Cleaning: {url}")
+        for i, (url, source_type, markdown) in enumerate(tasks, 1):
+            logger.info(
+                f"[Stage 3] ({i}/{len(tasks)}) Cleaning [{source_type}]: {url}"
+            )
             
             try:
-                json_result = self.processor.clean_data(markdown, url=url)
+                json_result = self.processor.clean_data(
+                    markdown, url=url, source_type=source_type
+                )
                 
                 if json_result:
                     # save_final_result 内部会自动更新状态为 COMPLETED
-                    self.db.save_final_result(url, json_result)
+                    self.db.save_final_result(url, json_result, source_type=source_type)
                     logger.info(f"[Stage 3] OK")
                     success_count += 1
                 else:

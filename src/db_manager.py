@@ -16,6 +16,7 @@ class DBManager:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()
         self._migrate_v1_1()  # v1.1: 兼容旧库的字段升级
+        self._migrate_v2_0()  # v2.0: 增加 source_type 字段并回填老数据
 
     def _get_connection(self):
         """获取数据库连接，设置 row_factory 使结果可以通过列名访问"""
@@ -39,11 +40,13 @@ class DBManager:
 
             # 2. 任务队列表：驱动采集和处理的流程
             #    v1.1: 新表创建时直接带上 error_message 和 last_attempt_at
+            #    v2.0: 增加 source_type，标记内容来源（bilibili / arxiv / ...）
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS task_queue (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     url TEXT UNIQUE,
                     status TEXT DEFAULT 'PENDING',
+                    source_type TEXT DEFAULT 'bilibili',
                     retry_count INTEGER DEFAULT 0,
                     error_message TEXT,
                     last_attempt_at DATETIME,
@@ -62,10 +65,12 @@ class DBManager:
             ''')
 
             # 4. 最终结果表：存储 LLM 清洗后的结构化数据
+            #    v2.0: 增加 source_type，便于按来源分组（如飞书报告分类）
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS final_results (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     url TEXT,
+                    source_type TEXT DEFAULT 'bilibili',
                     structured_json TEXT,
                     processed_at DATETIME,
                     FOREIGN KEY (url) REFERENCES task_queue (url)
@@ -93,10 +98,65 @@ class DBManager:
                 logger.info("[DB] migrated: added task_queue.last_attempt_at")
             conn.commit()
 
+    def _migrate_v2_0(self):
+        """
+        v2.0 schema migration：为 task_queue / final_results 增加 source_type
+        字段，并回填老库里已有的 arxiv URL 的正确类型。
+        幂等：每次启动安全调用。
+
+        回填规则：
+          - URL 含 'arxiv.org'  -> 'arxiv'
+          - 其余                -> 保持默认 'bilibili'（v1.x 时期都是 B 站）
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            # 1) task_queue.source_type
+            cursor.execute("PRAGMA table_info(task_queue)")
+            tq_cols = {row["name"] for row in cursor.fetchall()}
+            if "source_type" not in tq_cols:
+                cursor.execute(
+                    "ALTER TABLE task_queue ADD COLUMN source_type TEXT DEFAULT 'bilibili'"
+                )
+                logger.info("[DB] migrated: added task_queue.source_type")
+                # 回填：老库里已有的 arxiv 任务
+                cursor.execute(
+                    "UPDATE task_queue SET source_type = 'arxiv' "
+                    "WHERE url LIKE '%arxiv.org%'"
+                )
+                logger.info(
+                    f"[DB] migrated: backfilled {cursor.rowcount} task_queue "
+                    f"rows to source_type='arxiv'"
+                )
+
+            # 2) final_results.source_type
+            cursor.execute("PRAGMA table_info(final_results)")
+            fr_cols = {row["name"] for row in cursor.fetchall()}
+            if "source_type" not in fr_cols:
+                cursor.execute(
+                    "ALTER TABLE final_results ADD COLUMN source_type TEXT DEFAULT 'bilibili'"
+                )
+                logger.info("[DB] migrated: added final_results.source_type")
+                cursor.execute(
+                    "UPDATE final_results SET source_type = 'arxiv' "
+                    "WHERE url LIKE '%arxiv.org%'"
+                )
+                logger.info(
+                    f"[DB] migrated: backfilled {cursor.rowcount} final_results "
+                    f"rows to source_type='arxiv'"
+                )
+
+            conn.commit()
+
     # --- 业务方法 ---
 
-    def add_new_urls(self, urls):
-        """将新发现的 URL 加入任务队列"""
+    def add_new_urls(self, urls, source_type="bilibili"):
+        """
+        将新发现的 URL 加入任务队列。
+        Args:
+            urls: URL 列表。
+            source_type: 这批 URL 的来源类型（bilibili / arxiv / ...）。
+        """
         added_count = 0
         now = datetime.now().isoformat()
         with self._get_connection() as conn:
@@ -108,10 +168,11 @@ class DBManager:
                         "INSERT OR IGNORE INTO urls_history (url, first_seen_at, last_seen_at) VALUES (?, ?, ?)",
                         (url, now, now)
                     )
-                    # 将未处理的 URL 加入队列
+                    # 将未处理的 URL 加入队列（带来源类型）
                     cursor.execute(
-                        "INSERT OR IGNORE INTO task_queue (url, status, created_at) VALUES (?, 'PENDING', ?)",
-                        (url, now)
+                        "INSERT OR IGNORE INTO task_queue (url, status, source_type, created_at) "
+                        "VALUES (?, 'PENDING', ?, ?)",
+                        (url, source_type, now)
                     )
                     if cursor.rowcount > 0:
                         added_count += 1
@@ -119,6 +180,16 @@ class DBManager:
                     logger.error(f"[DB] Error adding URL {url}: {e}")
             conn.commit()
         return added_count
+
+    def get_task_source_type(self, url):
+        """查询某个任务的来源类型，找不到时返回 None。"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT source_type FROM task_queue WHERE url = ?", (url,)
+            )
+            row = cursor.fetchone()
+            return row["source_type"] if row else None
 
     def get_pending_tasks(self, limit=10):
         """获取待采集的任务"""
@@ -144,13 +215,14 @@ class DBManager:
             conn.execute("UPDATE task_queue SET status = 'COLLECTED' WHERE url = ?", (url,))
             conn.commit()
 
-    def save_final_result(self, url, json_data):
-        """保存 LLM 处理后的结果"""
+    def save_final_result(self, url, json_data, source_type="bilibili"):
+        """保存 LLM 处理后的结果（带来源类型）"""
         now = datetime.now().isoformat()
         with self._get_connection() as conn:
             conn.execute(
-                "INSERT INTO final_results (url, structured_json, processed_at) VALUES (?, ?, ?)",
-                (url, json_data, now)
+                "INSERT INTO final_results (url, source_type, structured_json, processed_at) "
+                "VALUES (?, ?, ?, ?)",
+                (url, source_type, json_data, now)
             )
             conn.execute("UPDATE task_queue SET status = 'COMPLETED' WHERE url = ?", (url,))
             conn.commit()

@@ -165,7 +165,7 @@ class LLMProcessor:
         except Exception as e:
             logger.error(f"[Processor] Failed to dump failure log: {e}")
 
-    def clean_data(self, markdown_text, url=None):
+    def clean_data(self, markdown_text, url=None, source_type=None):
         """
         调用 LLM 将 Markdown 转化为结构化 JSON 字符串。
         成功 → 返回 JSON 字符串
@@ -173,17 +173,18 @@ class LLMProcessor:
 
         Args:
             markdown_text: 待提取的 Markdown 文本。
-            url: 可选，内容来源 URL。用于推断 source_type 以选择对应 prompt。
-                 None 时默认按 B 站处理（向后兼容）。
+            url: 可选，内容来源 URL。当 source_type 未显式给出时用于兜底推断。
+            source_type: 可选，显式来源类型（bilibili / arxiv）。优先级高于 url 推断。
         """
         if not markdown_text or len(markdown_text) < 20:
             logger.warning("[Processor] Markdown text too short, skipping LLM.")
             return None
 
-        # 按 URL 推断信息源类型，选择对应 prompt
-        source_type = "bilibili"
-        if url and "arxiv.org" in url:
-            source_type = "arxiv"
+        # 优先用显式 source_type；否则按 URL 兜底推断
+        if source_type is None:
+            source_type = "bilibili"
+            if url and "arxiv.org" in url:
+                source_type = "arxiv"
 
         prompt = self._build_prompt(markdown_text, source_type=source_type)
 

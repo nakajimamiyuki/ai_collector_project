@@ -66,7 +66,7 @@ class Monitor:
                 )
                 continue
             if urls:
-                added = self.db.add_new_urls(urls)
+                added = self.db.add_new_urls(urls, source_type=source.source_type)
                 logger.info(
                     f"[Monitor] {source.source_type}: "
                     f"{len(urls)} urls -> {added} new tasks added."
