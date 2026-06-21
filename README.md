@@ -1,9 +1,10 @@
-# 🤖 AI Collector Project — 智能内容采集系统 v1.1
+# 🤖 AI Collector Project — 智能内容采集系统 v2.0
 
-> 一个集成 **Playwright 反爬采集 + LLM 结构化清洗** 的全自动化 B 站内容监控与分析系统。
+> 一个集成 **Playwright 反爬采集 + LLM 结构化清洗** 的全自动化多源内容监控与分析系统（B 站 + arXiv）。
 > 这不是传统爬虫，而是一个具备**自主决策、内容理解、容错恢复**能力的 AI Agent。
 
-> 🆕 **v1.1 stable** (2026-06-17)：B 站反爬升级 / LLM 健壮性增强 / 失败自动重试 / 定时运行支持。
+> 🆕 **v2.0** (2026-06-20)：插件式多源架构（B 站 + arXiv）/ source_type 持久化 / pytest 单元测试（36 测试，离线可跑）。
+> 🔹 **v1.1 stable** (2026-06-17)：B 站反爬升级 / LLM 健壮性增强 / 失败自动重试 / 定时运行支持。
 > [👉 查看完整 Changelog](#-changelog)
 
 ---
