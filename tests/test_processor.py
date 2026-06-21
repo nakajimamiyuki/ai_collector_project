@@ -70,7 +70,13 @@ def test_parse_broken_json_returns_error():
 
 
 # ---------------------------------------------------------------------------
-# prompt 按 source_type 分流
+# prompt 按 source_type 分流 —— 测行为契约，不测字符串内容
+#
+# 旧版本断言 prompt 里包含 "B 站"/"up_name"/"论文" 等字符串，是 snapshot 测试：
+# 改一下 prompt 措辞测试就红，但行为并没坏。改成测三条 invariant：
+#   1. 不同 source_type 产出不同的 prompt（分流真的起作用）
+#   2. 用户输入被透传到 prompt 里
+#   3. 不传 source_type 时走 bilibili 默认分支（与显式 bilibili 等价）
 # ---------------------------------------------------------------------------
 def _make_processor_without_env():
     """
@@ -81,23 +87,23 @@ def _make_processor_without_env():
     return p
 
 
-def test_build_prompt_bilibili():
+def test_build_prompt_routes_by_source_type():
+    """不同 source_type 应产生不同的 prompt（分流真的起作用）。"""
     p = _make_processor_without_env()
-    prompt = p._build_prompt("一些视频文本", source_type="bilibili")
-    assert "B 站" in prompt or "视频" in prompt
-    assert "up_name" in prompt
+    bili_prompt = p._build_prompt("text", source_type="bilibili")
+    arxiv_prompt = p._build_prompt("text", source_type="arxiv")
+    assert bili_prompt != arxiv_prompt
 
 
-def test_build_prompt_arxiv():
+def test_build_prompt_passes_through_user_input():
+    """用户输入应被原样嵌入到 prompt 里，无论走哪条分支。"""
     p = _make_processor_without_env()
-    prompt = p._build_prompt("some paper abstract", source_type="arxiv")
-    assert "论文" in prompt
-    # arxiv prompt 要求中文输出
-    assert "中文" in prompt
+    sentinel = "USER_INPUT_SENTINEL_xy9z"
+    assert sentinel in p._build_prompt(sentinel, source_type="bilibili")
+    assert sentinel in p._build_prompt(sentinel, source_type="arxiv")
 
 
 def test_build_prompt_defaults_to_bilibili():
-    """不传 source_type 默认走 B 站 prompt。"""
+    """不传 source_type 时应与显式 bilibili 走同一分支。"""
     p = _make_processor_without_env()
-    prompt = p._build_prompt("text")
-    assert "up_name" in prompt
+    assert p._build_prompt("text") == p._build_prompt("text", source_type="bilibili")

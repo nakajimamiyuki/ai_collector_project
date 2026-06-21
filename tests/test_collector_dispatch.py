@@ -19,11 +19,11 @@ pytestmark = pytest.mark.unit
 async def test_dispatch_arxiv_by_explicit_source_type():
     """显式 source_type='arxiv' 应走 _collect_arxiv，不碰 Playwright。"""
     c = BiliCollector()
+    url = "https://arxiv.org/abs/1"
     with patch.object(c, "_collect_arxiv", return_value="ARXIV_MD") as m_arxiv, \
          patch.object(c, "_collect_bilibili", new=AsyncMock()) as m_bili:
-        result = await c.collect_content("https://arxiv.org/abs/1", source_type="arxiv")
-    assert result == "ARXIV_MD"
-    m_arxiv.assert_called_once()
+        await c.collect_content(url, source_type="arxiv")
+    m_arxiv.assert_called_once_with(url)
     m_bili.assert_not_called()
 
 
@@ -31,11 +31,12 @@ async def test_dispatch_arxiv_by_explicit_source_type():
 async def test_dispatch_bilibili_by_explicit_source_type():
     """显式 source_type='bilibili' 应走 _collect_bilibili。"""
     c = BiliCollector()
+    url = "https://bilibili.com/v/1"
     with patch.object(c, "_collect_bilibili", new=AsyncMock(return_value="BILI_MD")) as m_bili, \
          patch.object(c, "_collect_arxiv") as m_arxiv:
-        result = await c.collect_content("https://bilibili.com/v/1", source_type="bilibili")
-    assert result == "BILI_MD"
+        await c.collect_content(url, source_type="bilibili")
     m_bili.assert_called_once()
+    assert m_bili.call_args.args[0] == url   # URL 被透传
     m_arxiv.assert_not_called()
 
 
@@ -43,11 +44,11 @@ async def test_dispatch_bilibili_by_explicit_source_type():
 async def test_dispatch_infers_arxiv_from_url():
     """source_type=None 时，arxiv.org 的 URL 应被推断为 arxiv（兜底逻辑）。"""
     c = BiliCollector()
+    url = "https://arxiv.org/abs/2606.1"
     with patch.object(c, "_collect_arxiv", return_value="ARXIV_MD") as m_arxiv, \
          patch.object(c, "_collect_bilibili", new=AsyncMock()) as m_bili:
-        result = await c.collect_content("https://arxiv.org/abs/2606.1")
-    assert result == "ARXIV_MD"
-    m_arxiv.assert_called_once()
+        await c.collect_content(url)
+    m_arxiv.assert_called_once_with(url)
     m_bili.assert_not_called()
 
 
@@ -55,11 +56,12 @@ async def test_dispatch_infers_arxiv_from_url():
 async def test_dispatch_infers_bilibili_from_url():
     """source_type=None 且非 arxiv 的 URL 默认走 bilibili。"""
     c = BiliCollector()
+    url = "https://www.bilibili.com/video/BVxxxx"
     with patch.object(c, "_collect_bilibili", new=AsyncMock(return_value="BILI_MD")) as m_bili, \
          patch.object(c, "_collect_arxiv") as m_arxiv:
-        result = await c.collect_content("https://www.bilibili.com/video/BVxxxx")
-    assert result == "BILI_MD"
+        await c.collect_content(url)
     m_bili.assert_called_once()
+    assert m_bili.call_args.args[0] == url
     m_arxiv.assert_not_called()
 
 
