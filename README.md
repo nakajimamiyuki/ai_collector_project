@@ -13,6 +13,18 @@
 
 ---
 
+## 📚 配套博客系列
+
+三篇 CSDN 文章配合项目代码一起阅读，效果最佳。每篇文章在仓库内也保留了 Markdown 源稿。
+
+| 版本 | 主题 | CSDN 在线版 | 仓库源稿 |
+|---|---|---|---|
+| **v1.0** | 从 0 到 1：AI 采集 Agent 从想法到能跑 | [📖 在 CSDN 阅读](https://blog.csdn.net/peaceworld_/article/details/162107888) | [`docs/blog/v1.0_*.md`](docs/blog/v1.0_AI采集Agent从0到1.md) |
+| **v1.1** | 从能跑到稳定：5 个工程化升级（反爬 / 重试 / 调度 / 健壮性） | [📖 在 CSDN 阅读](https://blog.csdn.net/peaceworld_/article/details/162130079) | [`docs/blog/v1.1_*.md`](docs/blog/v1.1_从能跑到稳定.md) |
+| **v2.0** | 为什么我把"加一个数据源"拆成了三个 Phase（重构思考） | [📖 在 CSDN 阅读](https://blog.csdn.net/peaceworld_/article/details/162179687) | [`docs/blog/v2.0_*.md`](docs/blog/v2.0_为什么我把加一个数据源拆成了三个Phase.md) |
+
+---
+
 ## ✨ 项目亮点
 
 - 🛡️ **反爬强**：Playwright + Stealth 模式，绕过常规的浏览器指纹检测
