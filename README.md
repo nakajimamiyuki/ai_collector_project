@@ -1,5 +1,9 @@
 # 🤖 AI Collector Project — 智能内容采集系统 v2.0
 
+[![tests](https://github.com/nakajimamiyuki/ai_collector_project/actions/workflows/tests.yml/badge.svg)](https://github.com/nakajimamiyuki/ai_collector_project/actions/workflows/tests.yml)
+[![python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 > 一个集成 **Playwright 反爬采集 + LLM 结构化清洗** 的全自动化多源内容监控与分析系统（B 站 + arXiv）。
 > 这不是传统爬虫，而是一个具备**自主决策、内容理解、容错恢复**能力的 AI Agent。
 
