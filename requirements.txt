@@ -13,3 +13,7 @@ openai>=1.30.0
 # ===== 工具 =====
 python-dotenv>=1.0.0
 pandas>=2.0.0
+
+# ===== RAG: 向量检索 =====
+pymilvus>=3.0.0
+milvus-lite>=3.0
