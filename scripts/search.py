@@ -29,7 +29,7 @@ def main():
     ap = argparse.ArgumentParser(description="语义搜采集到的内容")
     ap.add_argument("query", help="自然语言查询")
     ap.add_argument("--top-k", type=int, default=5, help="返回前 N 条（默认 5）")
-    ap.add_argument("--source", choices=["arxiv", "bilibili"], default=None,
+    ap.add_argument("--source", choices=["arxiv", "bilibili", "boss_zhipin"], default=None,
                     help="只搜某一类来源（默认全部）")
     args = ap.parse_args()
 

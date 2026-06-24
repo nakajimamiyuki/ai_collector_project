@@ -1,0 +1,80 @@
+# v3.0 求职 Agent 的用户画像
+# 任何字段都可缺省 —— Agent 会根据已填字段做匹配，未填字段不参与打分
+#
+# 用法：
+#   - 修改这个文件
+#   - 重跑 python scripts/find_jobs.py "..." 即可生效
+#   - Agent 输出的"技能差距"会基于这里的 already_have / want_to_avoid 计算
+
+# === 基本画像（用于过滤硬条件） ===
+degree: "本科"                # 学历：本科 / 大专 / 硕士 / 不限
+years_of_experience: 2        # 工作年限（数字）
+current_city: "北京"          # 当前所在城市
+target_cities:                # 期望工作城市（顺序代表优先级）
+  - 杭州
+  - 苏州
+  - 青岛
+  - 济南
+  - 郑州
+salary_min: 12000             # 期望最低月薪（元/月）
+salary_ideal: 18000           # 理想月薪
+# 期望工作类型：full_time / contract / internship
+job_type: "full_time"
+
+# === 技能画像（用于匹配打分） ===
+# 已具备 —— 简历能写、面试能讲的
+already_have:
+  - Python
+  - SQL
+  - 软件测试
+  - 测试用例设计
+  - Bug 跟踪与缺陷管理
+  - Playwright
+  - LangChain          # ai_collector_project v2/v3 实战
+  - RAG                # bge-m3 + Milvus Lite
+  - Milvus
+  - bge-m3
+  - 向量数据库
+  - 反爬虫
+  - SQLite
+  - Git
+  - CI/CD
+
+# 正在学 —— 出现这些技能的岗位算"差一点点就匹配"，加权
+learning:
+  - LangGraph
+  - MCP
+  - Coze
+  - Dify
+  - Neo4j
+  - LoRA
+  - QLoRA
+  - RLHF
+  - 多模态
+
+# 不要的 —— 出现这些算"减分项"
+want_to_avoid:
+  - 数据标注              # 标注岗不是开发岗
+  - 大模型标注
+  - 兼职
+  - 外包                  # 你不想要外包性质
+  - 项目交付              # 派驻类工作
+  - 在校/应届             # 你不是应届
+  - 5-10年                # 你年限不够
+  - 10年以上
+  - 销售
+  - 客服
+
+# === 转型方向（影响优先级排序） ===
+# 主投方向（出现关键词加权重）：
+primary_directions:
+  - "AI 应用开发"
+  - "Agent 开发"
+  - "RAG 工程师"
+  - "LLM 应用工程师"
+# 保底方向（你 2 年测评经验直接对口）：
+fallback_directions:
+  - "AI 测试"
+  - "大模型评估"
+  - "AI 评测工程师"
+  - "LLM benchmark"
