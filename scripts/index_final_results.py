@@ -11,6 +11,11 @@
 - 容错：单条 embed 失败只打日志、跳过，不中断整批
 - 进度可见：每条打印 [N/M] url，方便看到 ollama 推理节奏
 """
+import os
+
+# macOS OpenMP 双库冲突 escape hatch（必须在 import numpy/faiss/milvus 前设置）
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from __future__ import annotations
 
 import argparse

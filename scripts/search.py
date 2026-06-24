@@ -7,6 +7,11 @@ RAG 检索 CLI demo —— 用自然语言搜采集到的内容。
     python scripts/search.py "diffusion 模型" --source arxiv
     python scripts/search.py "Anthropic"
 """
+import os
+
+# macOS OpenMP 双库冲突 escape hatch（必须在 import numpy/faiss/milvus 前设置）
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from __future__ import annotations
 
 import argparse

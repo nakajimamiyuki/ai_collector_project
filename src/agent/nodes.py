@@ -259,9 +259,27 @@ def reflect(state: AgentState) -> AgentState:
         result = {"decision": "done"}
 
     if result.get("decision") == "retry":
-        next_kw = result.get("next_keywords") or []
+        next_kw_raw = result.get("next_keywords") or []
+        # 强壮化：LLM 偶尔会把 next_keywords 返回成嵌套结构（[["xxx"]]）或
+        # 单字符串而不是 list；统一拍平成 str 列表，不可哈希的直接跳过。
+        next_kw: list[str] = []
+        if isinstance(next_kw_raw, str):
+            next_kw = [next_kw_raw]
+        elif isinstance(next_kw_raw, list):
+            for item in next_kw_raw:
+                if isinstance(item, str):
+                    next_kw.append(item)
+                elif isinstance(item, list):
+                    # 嵌套 → 拍平一层
+                    next_kw.extend(s for s in item if isinstance(s, str))
+                # 其它非字符串/列表的类型（dict / None）直接忽略
+
         # 至少要换出一个新关键词，否则强制 done 防死循环
-        already_tried = {kw for trial in state["tried_keywords"] for kw in trial}
+        already_tried: set[str] = set()
+        for trial in state["tried_keywords"]:
+            for kw in trial:
+                if isinstance(kw, str):
+                    already_tried.add(kw)
         new_kw = [k for k in next_kw if k not in already_tried]
         if not new_kw:
             state["decision"] = "done"

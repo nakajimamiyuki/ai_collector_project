@@ -15,6 +15,11 @@ P3：把 BossSource 抓到的岗位入库到 final_results。
     python scripts/ingest_boss_jobs.py --cities 杭州,苏州 --keywords AI应用开发
     python scripts/ingest_boss_jobs.py --pages 2     # 每个查询抓 2 页
 """
+import os
+
+# macOS OpenMP 双库冲突 escape hatch（必须在 import numpy/faiss/milvus 前设置）
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from __future__ import annotations
 
 import argparse

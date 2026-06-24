@@ -1,5 +1,10 @@
 """P2 端到端验证：5 城市 × 4 关键词 抓岗位 + 打印汇总报告。"""
 
+import os
+
+# macOS OpenMP 双库冲突 escape hatch（必须在 import numpy/faiss/milvus 前设置）
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 import asyncio
 import logging
 from collections import Counter

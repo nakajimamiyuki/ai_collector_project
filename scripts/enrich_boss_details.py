@@ -17,6 +17,11 @@ flow
     python scripts/enrich_boss_details.py --limit 20 # 调试：只抓 20 条
     python scripts/enrich_boss_details.py --rerun    # 已补过的也重抓（更新数据）
 """
+import os
+
+# macOS OpenMP 双库冲突 escape hatch（必须在 import numpy/faiss/milvus 前设置）
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from __future__ import annotations
 
 import argparse

@@ -10,8 +10,15 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
+
+# macOS 上 milvus-lite 的 faiss 和 numpy/torch 都可能各自链一份 libomp.dylib，
+# 同一进程加载多份会触发 OMP Error #15 然后 abort。
+# 这个开关让 OpenMP 运行时容忍多份副本（官方 escape hatch）。
+# 必须在 import 任何依赖 OpenMP 的库之前设置，所以放在文件最顶部。
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
