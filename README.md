@@ -22,7 +22,8 @@
 | **v1.0** | 从 0 到 1：AI 采集 Agent 从想法到能跑 | [📖 在 CSDN 阅读](https://blog.csdn.net/peaceworld_/article/details/162107888) | [`docs/blog/v1.0_*.md`](docs/blog/v1.0_AI采集Agent从0到1.md) |
 | **v1.1** | 从能跑到稳定：5 个工程化升级（反爬 / 重试 / 调度 / 健壮性） | [📖 在 CSDN 阅读](https://blog.csdn.net/peaceworld_/article/details/162130079) | [`docs/blog/v1.1_*.md`](docs/blog/v1.1_从能跑到稳定.md) |
 | **v2.0** | 为什么我把"加一个数据源"拆成了三个 Phase（重构思考） | [📖 在 CSDN 阅读](https://blog.csdn.net/peaceworld_/article/details/162179687) | [`docs/blog/v2.0_*.md`](docs/blog/v2.0_为什么我把加一个数据源拆成了三个Phase.md) |
-| **v2.1** | 把采集器升级成 RAG 系统的一个夜晚（Milvus Lite + bge-m3 实战与踩坑） | _(待发布)_ | [`docs/blog/v2.1_*.md`](docs/blog/v2.1_把采集器升级成RAG系统的一个夜晚.md) |
+| **v2.1** | 把采集器升级成 RAG 系统的一个夜晚（Milvus Lite + bge-m3 实战与踩坑） | [📖 在 CSDN 阅读](https://blog.csdn.net/peaceworld_/article/details/162248336) | [`docs/blog/v2.1_*.md`](docs/blog/v2.1_把采集器升级成RAG系统的一个夜晚.md) |
+| **v3.0** | 用自己造的 Agent 给自己找工作（LangGraph + CDP 接管 Chrome + Boss 反爬 + 反思循环） | _(待发布)_ | [`docs/blog/v3.0_*.md`](docs/blog/v3.0_用自己造的Agent给自己找工作.md) |
 
 ---
 
