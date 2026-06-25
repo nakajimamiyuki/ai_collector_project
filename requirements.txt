@@ -18,6 +18,10 @@ pandas>=2.0.0
 pymilvus>=3.0.0
 milvus-lite>=3.0
 
+# ===== v3.1 MCP Server =====
+# 锁 1.26.x：兼容 Hermes 当前内置 MCP 客户端；避免新版本拉高 starlette 破坏 fastapi 依赖
+mcp==1.26.0
+
 # ===== v3.0 Agent: LangGraph 编排 =====
 langgraph>=1.0.0
 langchain>=1.0.0
