@@ -154,12 +154,19 @@ ai_collector_project/
 
 **周末 1**（2026-07-04/05 或 07-11/12）
 
-- [ ] P1.1 装 mcp SDK + fastmcp（venv 内，aliyun 镜像）
-- [ ] P1.2 写 `ai_collector_mcp.py` 骨架（只包 `search_jobs` 一个 Tool）
-- [ ] P1.3 stdio 模式启动，用 `mcp inspector` 调试
+- [x] P1.1 装 mcp SDK + fastmcp（venv 内，aliyun 镜像）
+- [x] P1.2 写 `ai_collector_mcp.py` 骨架（只包 `search_jobs` 一个 Tool）
+- [x] P1.3 stdio 模式启动，用 MCP Client 调试（`initialize → list_tools → call_tool`）
 - [ ] P1.4 配进 Hermes `~/.hermes/config.yaml` 的 `mcp_servers`
 - [ ] P1.5 配进 Claude Desktop（如有账号）
 - [ ] P1.6 完整跑一遍：用 Hermes 自然语言查\"杭州 LangChain 岗位\"，验证返回真实数据
+
+**已完成验证（2026-06-25）**：
+```
+✅ Direct import smoke: keyword=MCP city=杭州 → 5 matches
+✅ MCP stdio client smoke: list_tools=['search_jobs'], call_tool OK
+✅ Unit tests: tests/test_mcp_server.py 覆盖 keyword/city/top_k/missing DB
+```
 
 **完成标志**：
 ```

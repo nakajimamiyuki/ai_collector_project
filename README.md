@@ -39,7 +39,8 @@
 - 🧠 **RAG 语义检索**：Milvus Lite + bge-m3（本地 Ollama，1024 维），242 条数据自然语言查询召回质量 A+
 - 📦 **JD 详情富化**：详情 API + 安全 ID 配对自动抓取 192 条 JD 正文 / 公司名 / 学历经验，召回质量翻倍
 - 💼 **画像匹配**：`my_profile.yaml` 描述你的学历 / 年限 / 已有技能 / 想避开的关键词，Agent 自动算 skill gap
-- 🛠️ **生产级工程**：55 个 pytest 单测 / GitHub Actions CI / 失败自动重试 / 节流 + 退避
+- 🛠️ **生产级工程**：55+ 个 pytest 单测 / GitHub Actions CI / 失败自动重试 / 节流 + 退避
+- 🔗 **v3.1 起步：MCP Server**：基于 FastMCP 暴露 `search_jobs` 工具，Claude/Cursor/Hermes 可通过 stdio 调用本地 192 条 Boss JD 数据
 
 ---
 
@@ -166,6 +167,35 @@ python scripts/index_final_results.py --rebuild
 python scripts/find_jobs.py "找北京以外薪资 15K+ 要 LangChain 的 1-3 年 AI 应用开发岗"
 python scripts/find_jobs.py "AI 测试或大模型评估岗 适合 2 年传统测试转型" --verbose
 ```
+
+**D. v3.1 MCP Server（让 AI 客户端调用本地岗位库）**：
+
+```bash
+# 当前最小 Tool：search_jobs(keyword, city, top_k)
+# 真实走 MCP stdio：initialize → list_tools → call_tool
+python - <<'PY'
+import asyncio, json
+from pathlib import Path
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def main():
+    server = StdioServerParameters(
+        command='python',
+        args=[str(Path('src/mcp_server/ai_collector_mcp.py').resolve())],
+    )
+    async with stdio_client(server) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            print([t.name for t in (await session.list_tools()).tools])
+            result = await session.call_tool('search_jobs', {'keyword': 'MCP', 'city': '杭州', 'top_k': 2})
+            print(result.content[0].text)
+
+asyncio.run(main())
+PY
+```
+
+详细配置见：[`docs/MCP_SERVER.md`](docs/MCP_SERVER.md)
 
 ### 4. 定时运行（可选）
 
