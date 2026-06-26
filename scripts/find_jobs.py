@@ -29,12 +29,18 @@ from dotenv import load_dotenv
 load_dotenv(PROJECT_ROOT / ".env")
 
 from src.agent import find_jobs
+from src.agent.bad_case_store import BadCaseStore
 
 
 def main():
     ap = argparse.ArgumentParser(description="v3.0 求职 Agent")
     ap.add_argument("query", help="自然语言需求")
     ap.add_argument("--verbose", "-v", action="store_true", help="打印 Agent trace")
+    ap.add_argument(
+        "--no-record",
+        action="store_true",
+        help="不把这次跑写进 agent_runs.db（默认会写）",
+    )
     args = ap.parse_args()
 
     log_level = logging.INFO if args.verbose else logging.WARNING
@@ -53,13 +59,37 @@ def main():
     print(result.final_report)
 
     # 简短统计
+    reflect_rounds = len([t for t in result.trace if "reflect" in t])
+    result_count = len(result.filtered_jobs)
     print()
     print("─" * 60)
     print(
         f"⏱  Agent 用时 {result.elapsed_seconds:.1f}s · "
-        f"反思 {len([t for t in result.trace if 'reflect' in t])} 次 · "
-        f"过滤剩 {len(result.filtered_jobs)} / {result.filter_stats.get('input', 0)}"
+        f"反思 {reflect_rounds} 次 · "
+        f"过滤剩 {result_count} / {result.filter_stats.get('input', 0)}"
     )
+
+    # F2: 把这次跑落进 agent_runs.db，零结果会自动标 bad
+    if not args.no_record:
+        try:
+            store = BadCaseStore()
+            run_id = store.record_run(
+                query=args.query,
+                result_count=result_count,
+                elapsed_seconds=result.elapsed_seconds,
+                reflect_rounds=reflect_rounds,
+                trace=result.trace,
+                final_report=result.final_report,
+            )
+            run = store.get(run_id)
+            status_tag = run.status if run else "?"
+            tip = ""
+            if status_tag == "bad":
+                tip = "  ← 已自动标记 bad，跑 `python scripts/agent_runs.py list --status bad` 复盘"
+            print(f"📦 已记录到 agent_runs.db (id={run_id}, status={status_tag}){tip}")
+        except Exception as e:
+            # 记录失败不应该让 Agent 本身的输出受影响
+            print(f"⚠️  记录到 agent_runs.db 失败: {e}")
 
     # verbose 模式下打印 trace
     if args.verbose:

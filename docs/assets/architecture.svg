@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 880" font-family="-apple-system, 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif">
+  <!--
+    AI Collector Project — 架构总览（v3.0 + v3.1）
+    手绘 SVG，可直接被 GitHub README 渲染；简历用可在 Preview 中导出 PDF / PNG。
+  -->
+
+  <!-- Styles -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#f59e0b"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <style><![CDATA[
+      .title { fill: #f1f5f9; font-size: 24px; font-weight: 700; }
+      .subtitle { fill: #94a3b8; font-size: 13px; }
+      .layer-title { fill: #e2e8f0; font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+      .box-title { fill: #f8fafc; font-size: 14px; font-weight: 600; }
+      .box-sub { fill: #cbd5e1; font-size: 11px; }
+      .badge-new { fill: #fde047; font-size: 10px; font-weight: 700; }
+      .edge-label { fill: #94a3b8; font-size: 11px; font-style: italic; }
+      .footer { fill: #64748b; font-size: 11px; }
+    ]]></style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="880" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="40" y="50" class="title">🤖 AI Collector Project — 求职 Agent 架构总览</text>
+  <text x="40" y="72" class="subtitle">v3.0 LangGraph Agent · v3.1 MCP Server + Bad Case 闭环 · 192 条 Boss 真实 JD · 81 pytest 全绿</text>
+
+  <!-- ============== Layer 1: 采集层 ============== -->
+  <rect x="40" y="100" width="1200" height="115" rx="10" fill="#0c1a2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="60" y="125" class="layer-title">① 数据采集层（v2.0 插件式架构）</text>
+
+  <!-- Bilibili -->
+  <rect x="80" y="140" width="220" height="60" rx="8" fill="#1e293b" stroke="#475569"/>
+  <text x="190" y="163" text-anchor="middle" class="box-title">BilibiliSource</text>
+  <text x="190" y="183" text-anchor="middle" class="box-sub">Playwright + WBI 签名 + UID</text>
+
+  <!-- Arxiv -->
+  <rect x="350" y="140" width="220" height="60" rx="8" fill="#1e293b" stroke="#475569"/>
+  <text x="460" y="163" text-anchor="middle" class="box-title">ArxivSource</text>
+  <text x="460" y="183" text-anchor="middle" class="box-sub">Atom XML · cs.AI/CL/LG</text>
+
+  <!-- Boss -->
+  <rect x="620" y="140" width="280" height="60" rx="8" fill="#3b1e1e" stroke="#dc2626" stroke-width="2"/>
+  <text x="760" y="163" text-anchor="middle" class="box-title">★ BossSource（v3.0）</text>
+  <text x="760" y="183" text-anchor="middle" class="box-sub">CDP 接管真实 Chrome 绕 Canvas 反爬</text>
+
+  <!-- 192 JD badge -->
+  <rect x="950" y="148" width="230" height="46" rx="8" fill="#0f172a" stroke="#3b82f6" stroke-dasharray="4 3"/>
+  <text x="1065" y="170" text-anchor="middle" class="box-title" fill="#60a5fa">192 条 5 城市真实 JD</text>
+  <text x="1065" y="187" text-anchor="middle" class="box-sub">杭州 · 苏州 · 济南 · 青岛 · 郑州</text>
+
+  <!-- ============== Layer 2: 持久化 ============== -->
+  <rect x="40" y="240" width="1200" height="80" rx="10" fill="#0c1a2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="60" y="265" class="layer-title">② 持久化层</text>
+
+  <!-- collector.db -->
+  <rect x="240" y="277" width="380" height="36" rx="6" fill="#1e293b" stroke="#475569"/>
+  <text x="430" y="300" text-anchor="middle" class="box-title">collector.db (SQLite) · final_results · source_type · 状态机</text>
+
+  <!-- vector.db -->
+  <rect x="660" y="277" width="380" height="36" rx="6" fill="#1e293b" stroke="#475569"/>
+  <text x="850" y="300" text-anchor="middle" class="box-title">vector.db (Milvus Lite) · 1024 维 · COSINE · 192 向量</text>
+
+  <!-- ============== Layer 3: RAG ============== -->
+  <rect x="40" y="345" width="580" height="115" rx="10" fill="#0c1a2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <text x="60" y="370" class="layer-title">③ RAG 检索层（v2.1）</text>
+
+  <rect x="70" y="385" width="240" height="60" rx="8" fill="#1e293b" stroke="#475569"/>
+  <text x="190" y="408" text-anchor="middle" class="box-title">OllamaEmbedder</text>
+  <text x="190" y="428" text-anchor="middle" class="box-sub">本地 bge-m3 · 1024 维 · 零网络</text>
+
+  <rect x="340" y="385" width="260" height="60" rx="8" fill="#1e293b" stroke="#475569"/>
+  <text x="470" y="408" text-anchor="middle" class="box-title">VectorStore (Milvus Lite)</text>
+  <text x="470" y="428" text-anchor="middle" class="box-sub">单文件零服务 · 召回 A+</text>
+
+  <!-- ============== Layer 4: Agent ============== -->
+  <rect x="650" y="345" width="590" height="370" rx="10" fill="#1a0f2e" stroke="#7c3aed" stroke-width="2"/>
+  <text x="670" y="370" class="layer-title" fill="#c4b5fd">④ LangGraph 求职 Agent（v3.0）★</text>
+  <text x="1220" y="370" text-anchor="end" class="badge-new">NEW</text>
+
+  <!-- Nodes -->
+  <circle cx="760" cy="420" r="26" fill="#3b2a5e" stroke="#a78bfa" stroke-width="2"/>
+  <text x="760" y="424" text-anchor="middle" class="box-sub" fill="#e9d5ff">START</text>
+
+  <rect x="845" y="395" width="140" height="50" rx="25" fill="#3b2a5e" stroke="#a78bfa" stroke-width="2"/>
+  <text x="915" y="416" text-anchor="middle" class="box-title">parse_intent</text>
+  <text x="915" y="433" text-anchor="middle" class="box-sub">LLM</text>
+
+  <rect x="1020" y="395" width="140" height="50" rx="8" fill="#3b2a5e" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1090" y="416" text-anchor="middle" class="box-title">retrieve</text>
+  <text x="1090" y="433" text-anchor="middle" class="box-sub">RAG 召回</text>
+
+  <rect x="1020" y="490" width="140" height="50" rx="8" fill="#3b2a5e" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1090" y="511" text-anchor="middle" class="box-title">filter</text>
+  <text x="1090" y="528" text-anchor="middle" class="box-sub">薪资/城市/学历</text>
+
+  <rect x="845" y="490" width="140" height="50" rx="25" fill="#3b2a5e" stroke="#a78bfa" stroke-width="2"/>
+  <text x="915" y="511" text-anchor="middle" class="box-title">reflect</text>
+  <text x="915" y="528" text-anchor="middle" class="box-sub">LLM · 0 结果换词</text>
+
+  <rect x="845" y="585" width="140" height="50" rx="25" fill="#3b2a5e" stroke="#a78bfa" stroke-width="2"/>
+  <text x="915" y="606" text-anchor="middle" class="box-title">summarize</text>
+  <text x="915" y="623" text-anchor="middle" class="box-sub">LLM · Markdown 报告</text>
+
+  <circle cx="760" cy="610" r="26" fill="#3b2a5e" stroke="#a78bfa" stroke-width="2"/>
+  <text x="760" y="614" text-anchor="middle" class="box-sub" fill="#e9d5ff">END</text>
+
+  <!-- Edges inside Agent -->
+  <path d="M 786,420 L 845,420" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-purple)"/>
+  <path d="M 985,420 L 1020,420" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-purple)"/>
+  <path d="M 1090,445 L 1090,490" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-purple)"/>
+  <path d="M 1020,515 L 985,515" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-purple)"/>
+  <!-- reflect → retrieve (retry loop) -->
+  <path d="M 985,490 Q 1010,470 1020,445" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5 3" fill="none" marker-end="url(#arrow-orange)"/>
+  <text x="1010" y="470" class="edge-label" fill="#fbbf24">retry</text>
+  <!-- reflect → summarize (done) -->
+  <path d="M 915,540 L 915,585" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-purple)"/>
+  <text x="922" y="568" class="edge-label" fill="#fbbf24">done</text>
+  <!-- summarize → END -->
+  <path d="M 845,610 L 786,610" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-purple)"/>
+
+  <!-- profile YAML hint -->
+  <rect x="680" y="660" width="540" height="40" rx="6" fill="#1e1830" stroke="#7c3aed" stroke-dasharray="3 2"/>
+  <text x="950" y="685" text-anchor="middle" class="box-sub" fill="#c4b5fd">画像驱动 · my_profile.yaml: 学历 / 年限 / already_have / learning / want_to_avoid</text>
+
+  <!-- ============== Layer 5: MCP Server ============== -->
+  <rect x="40" y="490" width="580" height="160" rx="10" fill="#0a2e2e" stroke="#14b8a6" stroke-width="2"/>
+  <text x="60" y="515" class="layer-title" fill="#5eead4">⑤ MCP Server（v3.1）★ NEW</text>
+  <text x="600" y="515" text-anchor="end" class="badge-new">NEW</text>
+
+  <!-- 3 Tools -->
+  <rect x="70" y="535" width="170" height="100" rx="8" fill="#134e4a" stroke="#2dd4bf"/>
+  <text x="155" y="558" text-anchor="middle" class="box-title">search_jobs</text>
+  <text x="155" y="578" text-anchor="middle" class="box-sub">字面包含匹配</text>
+  <text x="155" y="595" text-anchor="middle" class="box-sub">title/company/JD</text>
+  <text x="155" y="617" text-anchor="middle" class="box-sub" fill="#fbbf24">已 11 单测覆盖</text>
+
+  <rect x="260" y="535" width="170" height="100" rx="8" fill="#134e4a" stroke="#2dd4bf"/>
+  <text x="345" y="558" text-anchor="middle" class="box-title">query_rag</text>
+  <text x="345" y="578" text-anchor="middle" class="box-sub">bge-m3 语义检索</text>
+  <text x="345" y="595" text-anchor="middle" class="box-sub">Milvus + 余弦</text>
+  <text x="345" y="617" text-anchor="middle" class="box-sub" fill="#fbbf24">score 0.79 召回近义词</text>
+
+  <rect x="450" y="535" width="160" height="100" rx="8" fill="#134e4a" stroke="#2dd4bf"/>
+  <text x="530" y="558" text-anchor="middle" class="box-title">get_skill_gap</text>
+  <text x="530" y="578" text-anchor="middle" class="box-sub">市场热度</text>
+  <text x="530" y="595" text-anchor="middle" class="box-sub">+ 画像缺口</text>
+  <text x="530" y="617" text-anchor="middle" class="box-sub" fill="#fbbf24">Python/Agent/RAG Top3</text>
+
+  <!-- ============== Layer 6: Bad Case 闭环 ============== -->
+  <rect x="40" y="675" width="580" height="125" rx="10" fill="#2a1a0c" stroke="#ea580c" stroke-width="2"/>
+  <text x="60" y="700" class="layer-title" fill="#fdba74">⑥ Bad Case 闭环（v3.1）★ NEW</text>
+  <text x="600" y="700" text-anchor="end" class="badge-new">NEW</text>
+
+  <rect x="70" y="715" width="240" height="70" rx="8" fill="#451a03" stroke="#fb923c"/>
+  <text x="190" y="738" text-anchor="middle" class="box-title">agent_runs.db</text>
+  <text x="190" y="757" text-anchor="middle" class="box-sub">每次跑自动落库</text>
+  <text x="190" y="773" text-anchor="middle" class="box-sub">零结果 → 自动 bad</text>
+
+  <rect x="330" y="715" width="280" height="70" rx="8" fill="#451a03" stroke="#fb923c"/>
+  <text x="470" y="738" text-anchor="middle" class="box-title">agent_runs.py CLI</text>
+  <text x="470" y="757" text-anchor="middle" class="box-sub">list / show / mark / replay / stats</text>
+  <text x="470" y="773" text-anchor="middle" class="box-sub">15 单测覆盖</text>
+
+  <!-- ============== MCP Clients ============== -->
+  <rect x="660" y="730" width="580" height="70" rx="10" fill="#0c1a2e" stroke="#1e3a5f"/>
+  <text x="680" y="755" class="layer-title">⑦ MCP 客户端（任何 stdio 客户端可调用）</text>
+  <rect x="690" y="765" width="120" height="28" rx="14" fill="#1e293b" stroke="#475569"/>
+  <text x="750" y="783" text-anchor="middle" class="box-sub">Hermes Agent</text>
+  <rect x="830" y="765" width="160" height="28" rx="14" fill="#1e293b" stroke="#475569"/>
+  <text x="910" y="783" text-anchor="middle" class="box-sub">Claude Desktop</text>
+  <rect x="1010" y="765" width="90" height="28" rx="14" fill="#1e293b" stroke="#475569"/>
+  <text x="1055" y="783" text-anchor="middle" class="box-sub">Cursor</text>
+  <rect x="1120" y="765" width="100" height="28" rx="14" fill="#1e293b" stroke="#475569"/>
+  <text x="1170" y="783" text-anchor="middle" class="box-sub">… stdio</text>
+
+  <!-- ============== Cross-layer arrows ============== -->
+  <!-- 采集 → DB -->
+  <path d="M 760,200 L 430,275" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 1065,200 L 850,275" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <!-- collector.db → RAG embedder -->
+  <path d="M 350,313 L 250,385" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <!-- embedder → vector.db -->
+  <path d="M 310,415 L 340,415" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 600,415 Q 730,415 850,320" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <!-- vector.db → Agent retrieve -->
+  <path d="M 850,313 Q 950,330 1075,395" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-purple)"/>
+  <text x="1000" y="358" class="edge-label" fill="#c4b5fd">RAG 召回</text>
+  <!-- Agent → MCP server (复用工具: MCP Server 内部调用 Agent 的 vector_search_jobs / compute_skill_gap)
+       走线策略: 从 MCP Server 右边缘出 → Agent 左边缘进, 中间不穿任何方块 -->
+  <path d="M 615,560 Q 635,530 650,500" stroke="#14b8a6" stroke-width="1.6" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow)"/>
+  <text x="660" y="540" class="edge-label" fill="#5eead4">复用 tools.py</text>
+  <!-- find_jobs → bad case (自动落库)
+       走线策略: 从 Agent 左下角出 → 走 Agent/MCP 之间的 30px 空隙 → 接 Bad Case 顶部右侧
+       这样既不穿 MCP Server, 也不穿 Agent 内部节点 -->
+  <path d="M 845,620 Q 720,660 620,720" stroke="#fb923c" stroke-width="1.6" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow-orange)"/>
+  <text x="660" y="685" class="edge-label" fill="#fdba74">自动落库</text>
+  <!-- MCP server → clients -->
+  <path d="M 530,635 Q 650,690 800,765" stroke="#14b8a6" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 530,635 Q 700,690 910,765" stroke="#14b8a6" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 530,635 Q 800,720 1055,765" stroke="#14b8a6" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Footer -->
+  <text x="640" y="845" text-anchor="middle" class="footer">
+    LangGraph · RAG · bge-m3 · Milvus · CDP · MCP · 81 pytest · GitHub Actions CI · 5 城市 192 条真实 JD
+  </text>
+  <text x="640" y="862" text-anchor="middle" class="footer">
+    github.com/nakajimamiyuki/ai_collector_project
+  </text>
+</svg>

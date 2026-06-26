@@ -157,15 +157,21 @@ ai_collector_project/
 - [x] P1.1 装 mcp SDK + fastmcp（venv 内，aliyun 镜像）
 - [x] P1.2 写 `ai_collector_mcp.py` 骨架（只包 `search_jobs` 一个 Tool）
 - [x] P1.3 stdio 模式启动，用 MCP Client 调试（`initialize → list_tools → call_tool`）
-- [ ] P1.4 配进 Hermes `~/.hermes/config.yaml` 的 `mcp_servers`
+- [x] P1.4 配进 Hermes `~/.hermes/config.yaml` 的 `mcp_servers`
 - [ ] P1.5 配进 Claude Desktop（如有账号）
-- [ ] P1.6 完整跑一遍：用 Hermes 自然语言查\"杭州 LangChain 岗位\"，验证返回真实数据
+- [x] P1.6 完整跑一遍：用 Hermes 自然语言查"杭州 LangChain 岗位"，验证返回真实数据
+- [x] P1.7 加 `query_rag(question, top_k)` Tool（bge-m3 + Milvus 语义检索）
+- [x] P1.8 加 `get_skill_gap(top_n)` Tool（市场技能热度 + 画像缺口对照）
+- [x] P1.9 修两个子进程坑：sys.path 注入项目根 + `KMP_DUPLICATE_LIB_OK=TRUE` 防 OpenMP abort
 
-**已完成验证（2026-06-25）**：
+**已完成验证（2026-06-26）**：
 ```
-✅ Direct import smoke: keyword=MCP city=杭州 → 5 matches
-✅ MCP stdio client smoke: list_tools=['search_jobs'], call_tool OK
-✅ Unit tests: tests/test_mcp_server.py 覆盖 keyword/city/top_k/missing DB
+✅ 3 Tool 全部跑通：search_jobs / query_rag / get_skill_gap
+✅ MCP stdio client 端到端验证（list_tools=3, 三次 call_tool 全部 isError=False）
+✅ 真实数据：query_rag 语义检索召回 LangGraph+Agent 岗位（最高 score 0.7974）
+✅ 真实数据：get_skill_gap 在 192 条 JD 上聚合，Python(108) / Agent(106) / RAG(82)
+✅ 单元测试 11 个全绿（4 search_jobs + 4 query_rag + 3 get_skill_gap）
+✅ 全量测试 66 个全绿（55 老测试 + 11 MCP）
 ```
 
 **完成标志**：
