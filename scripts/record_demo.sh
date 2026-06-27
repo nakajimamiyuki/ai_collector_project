@@ -29,12 +29,16 @@ echo "    输出: $OUT"
 echo "    录制开始后会自动跑 find_jobs.py，结束后按 Ctrl+D 退出 shell"
 echo ""
 
-# --max-wait 让长输出之间的等待时间压到 2 秒，回放节奏紧凑
-# --title 是 asciinema.org 上显示的标题
+# asciinema 3.x 参数：
+#   --idle-time-limit 2   长等待压到 2 秒（旧版叫 --max-wait）
+#   -t                    asciinema.org 上显示的标题
+#   -c                    要录的命令（旧版叫 --command，3.x 仍支持长写法）
+#   --overwrite           已有同名文件直接覆盖（重录方便）
 asciinema rec \
-    --title "v3.0 求职 Agent demo: $QUERY" \
-    --max-wait 2 \
-    --command "/Users/minjie/shangguigu/.venv/bin/python scripts/find_jobs.py '$QUERY'" \
+    --overwrite \
+    --idle-time-limit 2 \
+    -t "v3.0 求职 Agent demo: $QUERY" \
+    -c "/Users/minjie/shangguigu/.venv/bin/python scripts/find_jobs.py '$QUERY'" \
     "$OUT"
 
 echo ""
