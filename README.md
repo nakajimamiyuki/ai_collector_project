@@ -25,7 +25,7 @@
 
 <p align="center">
   <img src="docs/assets/demo.gif" alt="v3.0 Agent demo (asciinema)" width="100%">
-  <br><sub>↑ 一句自然语言 → LangGraph Agent 自己跑 RAG 检索 / 反思 / 报告生成（真实录屏，无剪辑）</sub>
+  <br><sub>↑ <b>真实录屏，无剪辑</b> · 一句"苏州或郑州 AI 应用 不要 Java" → LangGraph Agent 自己跑 30→6 召回 · 反思 2 次 · 报告直出（111s）</sub>
 </p>
 
 <p align="center">
