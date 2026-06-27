@@ -24,6 +24,11 @@
 > **现在它能听你一句自然语言需求，自己跑完整条求职链路。**
 
 <p align="center">
+  <img src="docs/assets/demo.gif" alt="v3.0 Agent demo (asciinema)" width="100%">
+  <br><sub>↑ 一句自然语言 → LangGraph Agent 自己跑 RAG 检索 / 反思 / 报告生成（真实录屏，无剪辑）</sub>
+</p>
+
+<p align="center">
   <img src="docs/assets/architecture.svg" alt="Architecture overview" width="100%">
 </p>
 
